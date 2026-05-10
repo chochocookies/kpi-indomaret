@@ -1,0 +1,11 @@
+Options -Indexes
+RewriteEngine On
+RewriteBase /kpi-indomaret/
+
+# Block direct access to PHP files in subdirectories (except index.php)
+RewriteRule ^(config|models|controllers|helpers|database)/ - [F,L]
+
+# Route everything to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?$1 [QSA,L]

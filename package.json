@@ -1,0 +1,13 @@
+{
+  "name": "kpi-indomaret",
+  "version": "1.0.0",
+  "description": "KPI Monitor Indomaret",
+  "scripts": {
+    "build": "npx @tailwindcss/cli -i ./public/css/app.css -o ./public/css/tailwind.css --minify",
+    "watch": "npx @tailwindcss/cli -i ./public/css/app.css -o ./public/css/tailwind.css --watch"
+  },
+  "dependencies": {
+    "tailwindcss": "^4.2.4",
+    "@tailwindcss/cli": "^4.2.4"
+  }
+}
