@@ -4,12 +4,7 @@ $page = 'dashboard';
 $bln  = getNamaBulan($bulan);
 ?>
 
-<?php if ($flash): ?>
-<div id="flash-msg" class="fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-semibold transition-opacity duration-500
-    <?= $flash['type']==='success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white' ?>">
-    <?= htmlspecialchars($flash['msg']) ?>
-</div>
-<?php endif; ?>
+<?php include __DIR__ . '/../layout/flash.php'; ?>
 
 <!-- Period selector (admin tanpa toko) -->
 <div class="bg-white rounded-2xl shadow-sm border border-blue-50 p-4 mb-5">

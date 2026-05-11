@@ -6,12 +6,7 @@ $nklData  = $kpiData['nkl'];
 $namaToko = $toko['nama_toko'] ?? '';
 ?>
 
-<?php if ($flash): ?>
-<div id="flash-msg" class="fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-semibold transition-opacity duration-500
-    <?= $flash['type']==='success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white' ?>">
-    <?= htmlspecialchars($flash['msg']) ?>
-</div>
-<?php endif; ?>
+<?php include __DIR__ . '/../layout/flash.php'; ?>
 
 <?php include __DIR__ . '/../layout/period_selector.php'; ?>
 
@@ -128,7 +123,7 @@ $namaToko = $toko['nama_toko'] ?? '';
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="audit-fields">
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Sales Gross ALL (Exc. Buah)</label>
-                    <input type="text" name="sales_gross_all" value="<?= formatAngka($nkl['sales_gross_all'] ?? 0) ?>" class="input-field" oninput="formatNumber(this); hitungBudget()">
+                    <input type="text" name="sales_gross_all" value="<?= formatAngka($nkl['sales_gross_all'] ?? 0) ?>" class="input-field num-input" oninput="formatNumber(this); hitungBudget()">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Aktual NKL ALL (negatif = over)</label>
@@ -136,7 +131,7 @@ $namaToko = $toko['nama_toko'] ?? '';
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Sales Gross Buah</label>
-                    <input type="text" name="sales_gross_buah" value="<?= formatAngka($nkl['sales_gross_buah'] ?? 0) ?>" class="input-field" oninput="formatNumber(this)">
+                    <input type="text" name="sales_gross_buah" value="<?= formatAngka($nkl['sales_gross_buah'] ?? 0) ?>" class="input-field num-input" oninput="formatNumber(this)">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Aktual NKL Buah (negatif = over)</label>
@@ -176,4 +171,5 @@ if (auditRadio && auditRadio.value === '0') {
     document.getElementById('audit-fields').style.opacity = '0.5';
 }
 hitungBudget();
+document.addEventListener("DOMContentLoaded", initNumberInputs);
 </script>

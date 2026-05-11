@@ -58,6 +58,219 @@
         .info-box strong{color:#1d4ed8;}
         .tab-btn{transition:all .15s;}
     </style>
+<script>
+// ══════════════════════════════════════════
+// KPI GLOBAL UTILITIES — loaded in <head> so all views can use them
+// ══════════════════════════════════════════
+var KPI = window.KPI = { _calCallbacks: {}, _defaultCalClick: null };
+
+// ── TOAST ──
+KPI.toast = function(msg, type, duration) {
+    type = type||'success'; duration = duration||4000;
+    var icons   = {success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+    var colors  = {
+        success:'background:#f0fdf4;border-color:#86efac;color:#166534;',
+        error:  'background:#fff1f2;border-color:#fca5a5;color:#991b1b;',
+        warning:'background:#fffbeb;border-color:#fcd34d;color:#92400e;',
+        info:   'background:#eff6ff;border-color:#93c5fd;color:#1e40af;'
+    };
+    function getContainer() {
+        var c = document.getElementById('toast-container');
+        if (!c) {
+            c = document.createElement('div');
+            c.id = 'toast-container';
+            c.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;max-width:320px;pointer-events:none;';
+            document.body.appendChild(c);
+        }
+        return c;
+    }
+    var el = document.createElement('div');
+    el.style.cssText = 'display:flex;align-items:flex-start;gap:.6rem;padding:.75rem 1rem;border-radius:.875rem;border:1.5px solid;box-shadow:0 4px 16px rgba(0,0,0,.12);font-size:.82rem;font-weight:600;pointer-events:all;cursor:pointer;opacity:0;transform:translateX(1rem);transition:opacity .25s,transform .25s;min-width:220px;' + (colors[type]||colors.info);
+    el.innerHTML = '<span style="font-size:1rem;flex-shrink:0">'+icons[type]+'</span><span style="flex:1;line-height:1.45">'+msg+'</span><span onclick="KPI._toastOut(this.parentElement)" style="opacity:.5;cursor:pointer;font-size:1.1rem;line-height:1;margin-left:.25rem">×</span>';
+    getContainer().appendChild(el);
+    requestAnimationFrame(function(){ el.style.opacity='1'; el.style.transform='translateX(0)'; });
+    var t = setTimeout(function(){ KPI._toastOut(el); }, duration);
+    el._t = t;
+    return el;
+};
+KPI._toastOut = function(el) {
+    clearTimeout(el._t);
+    el.style.opacity='0'; el.style.transform='translateX(1rem)';
+    setTimeout(function(){ if(el.parentElement) el.parentElement.removeChild(el); }, 280);
+};
+
+// ── CALENDAR ──
+KPI.renderCalendar = function(containerId, year, month, filledDates, onDateClick) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    // Store callback globally so we can reference it from inline onclick
+    var cbKey = 'cal_cb_' + containerId;
+    KPI._calCallbacks[cbKey] = onDateClick || null;
+
+    var filled = {};
+    (filledDates||[]).forEach(function(d){ filled[d]=true; });
+    var today = new Date();
+    var todayStr = today.getFullYear()+'-'+
+        String(today.getMonth()+1).padStart(2,'0')+'-'+
+        String(today.getDate()).padStart(2,'0');
+    var firstDay    = new Date(year, month-1, 1).getDay();
+    var daysInMonth = new Date(year, month, 0).getDate();
+    var dayNames    = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+
+    var html = '<div style="font-size:.72rem;user-select:none">';
+    // Header row
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:5px">';
+    dayNames.forEach(function(d){
+        html += '<div style="text-align:center;font-weight:700;color:#94a3b8;padding:2px 0;font-size:.65rem">'+d+'</div>';
+    });
+    html += '</div>';
+    // Days grid
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
+    for (var i=0;i<firstDay;i++) html += '<div></div>';
+    for (var day=1; day<=daysInMonth; day++) {
+        var ds = year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+        var isFilled = !!filled[ds];
+        var isToday  = (ds === todayStr);
+        var isFuture = (ds > todayStr);
+        var bg    = isFilled  ? '#22c55e'  : (isToday ? '#2563eb' : (isFuture ? '#f1f5f9' : '#fee2e2'));
+        var clr   = isFilled  ? '#fff'     : (isToday ? '#fff'    : (isFuture ? '#cbd5e1' : '#dc2626'));
+        var bord  = isToday   ? '2px solid #1d4ed8' : 'none';
+        var fw    = (isFilled || isToday) ? '700' : '500';
+        var inner = day + (isFilled ? '<br><span style="font-size:.55rem;line-height:1">✓</span>' : '');
+        if (isFuture || !onDateClick) {
+            // Non-clickable
+            html += '<div style="text-align:center;padding:5px 2px;border-radius:7px;background:'+bg+
+                ';color:'+clr+';font-weight:'+fw+';border:'+bord+
+                ';line-height:1.15;font-size:.7rem">'+inner+'</div>';
+        } else {
+            // Clickable — use data attribute, no inline JS quotes
+            html += '<div data-cal-id="'+containerId+'" data-cal-date="'+ds+'" '+
+                'title="'+(isFilled ? '✓ Data sudah diisi' : 'Klik untuk input data')+'" '+
+                'style="text-align:center;padding:5px 2px;border-radius:7px;cursor:pointer;background:'+bg+
+                ';color:'+clr+';font-weight:'+fw+';border:'+bord+
+                ';line-height:1.15;font-size:.7rem;transition:transform .1s">'+inner+'</div>';
+        }
+    }
+    html += '</div>';
+    // Legend
+    html += '<div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem;font-size:.65rem;color:#64748b">';
+    html += '<span><span style="display:inline-block;width:10px;height:10px;background:#22c55e;border-radius:3px;vertical-align:middle;margin-right:2px"></span>Terisi</span>';
+    html += '<span><span style="display:inline-block;width:10px;height:10px;background:#fee2e2;border:1px solid #fca5a5;border-radius:3px;vertical-align:middle;margin-right:2px"></span>Belum</span>';
+    html += '<span><span style="display:inline-block;width:10px;height:10px;background:#2563eb;border-radius:3px;vertical-align:middle;margin-right:2px"></span>Hari ini</span>';
+    html += '</div></div>';
+    container.innerHTML = html;
+
+    // Attach click events via JS (no inline onclick — avoids all quote issues)
+    container.querySelectorAll('[data-cal-date]').forEach(function(el) {
+        el.addEventListener('mouseenter', function(){ this.style.transform='scale(1.12)'; });
+        el.addEventListener('mouseleave', function(){ this.style.transform=''; });
+        el.addEventListener('click', function() {
+            var ds  = this.getAttribute('data-cal-date');
+            var cid = this.getAttribute('data-cal-id');
+            var cb  = KPI._calCallbacks['cal_cb_'+cid];
+            if (cb) cb(ds);
+        });
+    });
+};
+
+// ── NUMBER INPUTS ──
+function formatNumber(input) {
+    var neg = input.value.trim().startsWith('-');
+    var d   = input.value.replace(/[^\d]/g,'');
+    d = d.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+    input.value = (neg?'-':'')+d;
+}
+function getRaw(val) {
+    return parseInt((val||'0').replace(/\./g,''))||0;
+}
+function initNumberInputs(scope) {
+    var root = scope || document;
+    root.querySelectorAll('.num-input').forEach(function(el) {
+        if (el._kpiInit) return; el._kpiInit = true;
+        el.addEventListener('focus', function(){ if(this.value==='0'||this.value==='') this.value=''; this.select(); });
+        el.addEventListener('blur',  function(){ if(this.value===''||this.value==='-') this.value='0'; });
+        el.addEventListener('input', function(){ formatNumber(this); });
+    });
+    root.querySelectorAll('.int-input').forEach(function(el) {
+        if (el._kpiInit) return; el._kpiInit = true;
+        el.addEventListener('focus', function(){ if(this.value==='0') this.value=''; this.select(); });
+        el.addEventListener('blur',  function(){ if(this.value==='') this.value='0'; });
+    });
+    root.querySelectorAll('.pct-input').forEach(function(el) {
+        if (el._kpiInit) return; el._kpiInit = true;
+        el.addEventListener('focus', function(){ if(parseFloat(this.value||0)===0) this.value=''; this.select(); });
+        el.addEventListener('blur',  function(){ if(this.value==='') this.value='0'; });
+    });
+}
+
+// ── TABS ──
+function showTab(tabId, prefix) {
+    // Hide all tabs with this prefix
+    var allTabs = document.querySelectorAll('[id^="'+prefix+'tab-"]');
+    allTabs.forEach(function(t) {
+        t.style.cssText = 'display:none';
+    });
+    // Reset all buttons
+    var allBtns = document.querySelectorAll('[id^="'+prefix+'btn-"]');
+    allBtns.forEach(function(b) {
+        b.style.background = '';
+        b.style.color = '';
+        b.style.borderColor = '';
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-secondary');
+    });
+    // Show target tab
+    var tab = document.getElementById(tabId);
+    if (tab) {
+        tab.style.cssText = 'display:block';
+    }
+    // Activate button
+    // btn id format: prefix + 'btn-' + suffix where tabId = prefix + 'tab-' + suffix
+    var suffix = tabId.substring((prefix + 'tab-').length);
+    var btn = document.getElementById(prefix + 'btn-' + suffix);
+    if (btn) {
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+    }
+}
+function initTabs(prefix) {
+    var allTabs = document.querySelectorAll('[id^="'+prefix+'tab-"]');
+    allTabs.forEach(function(t, i) {
+        t.style.cssText = i === 0 ? 'display:block' : 'display:none';
+    });
+    var allBtns = document.querySelectorAll('[id^="'+prefix+'btn-"]');
+    allBtns.forEach(function(b, i) {
+        b.classList.remove(i === 0 ? 'btn-secondary' : 'btn-primary');
+        b.classList.add(i === 0 ? 'btn-primary' : 'btn-secondary');
+    });
+}
+
+// ── CONFIRM DELETE ──
+function confirmDel(form, msg) {
+    if(confirm(msg||'Hapus data ini?')) form.submit();
+    return false;
+}
+
+// ── SIDEBAR ──
+var _sbCol = localStorage.getItem('sb_collapsed')==='1';
+function applyDesktopState() {
+    var sb=document.getElementById('sidebar'), ma=document.getElementById('main-area');
+    if(!sb||!ma||window.innerWidth<768) return;
+    if(_sbCol){sb.classList.add('collapsed');ma.classList.add('expanded');}
+    else{sb.classList.remove('collapsed');ma.classList.remove('expanded');}
+}
+function toggleDesktopSidebar() { _sbCol=!_sbCol; localStorage.setItem('sb_collapsed',_sbCol?'1':'0'); applyDesktopState(); }
+function openMobileSidebar()  { document.getElementById('sidebar').classList.add('mob-open'); var ov=document.getElementById('overlay'); if(ov)ov.classList.add('show'); }
+function closeMobileSidebar() { document.getElementById('sidebar').classList.remove('mob-open'); var ov=document.getElementById('overlay'); if(ov)ov.classList.remove('show'); }
+
+document.addEventListener('DOMContentLoaded', function() {
+    applyDesktopState();
+    initNumberInputs();
+    // Show flash toast from PHP
+    var f = document.getElementById('__flash__');
+    if(f){ KPI.toast(f.dataset.msg, f.dataset.type); f.remove(); }
+});
+</script>
 </head>
 <body>
 <?php if (isLoggedIn()): ?>

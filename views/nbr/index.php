@@ -13,12 +13,7 @@ foreach ($nbrHarian as $h) {
 }
 ?>
 
-<?php if ($flash): ?>
-<div id="flash-msg" class="fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-semibold
-    <?= $flash['type']==='success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white' ?>">
-    <?= htmlspecialchars($flash['msg']) ?>
-</div>
-<?php endif; ?>
+<?php include __DIR__ . '/../layout/flash.php'; ?>
 
 <?php include __DIR__ . '/../layout/period_selector.php'; ?>
 
@@ -66,13 +61,20 @@ foreach ($nbrHarian as $h) {
 
 <!-- Tabs -->
 <div class="flex gap-2 mb-4 flex-wrap">
-    <button onclick="showTab('tab-nbr-harian','nbr-')" id="nbr-btn-harian" class="btn-primary text-xs">📋 Catat Nota Harian</button>
-    <button onclick="showTab('tab-nbr-summary','nbr-')" id="nbr-btn-summary" class="btn-secondary text-xs">⚙️ Summary & Poin</button>
-    <button onclick="showTab('tab-nbr-list','nbr-')" id="nbr-btn-list" class="btn-secondary text-xs">📑 Daftar Nota (<?= count($nbrHarian) ?>)</button>
+    <button onclick="nbrTab('harian')" id="nbr-btn-harian" class="btn-primary text-xs">📋 Catat Nota Harian</button>
+    <button onclick="nbrTab('summary')" id="nbr-btn-summary" class="btn-secondary text-xs">⚙️ Summary & Poin</button>
+    <button onclick="nbrTab('list')" id="nbr-btn-list" class="btn-secondary text-xs">📑 Daftar Nota (<?= count($nbrHarian) ?>)</button>
 </div>
 
 <!-- ── TAB: CATAT NOTA HARIAN ── -->
-<div id="tab-nbr-harian">
+<div id="nbr-tab-harian">
+    <!-- Kalender checklist NBR -->
+    <div class="kpi-card p-4 mb-4">
+        <div class="font-bold text-blue-900 text-sm mb-3">📅 Kalender – Hari dengan Nota NBR</div>
+        <div id="nbr-calendar"></div>
+        <p class="text-xs text-slate-400 mt-2">Hijau = ada nota tercatat pada hari itu</p>
+    </div>
+
     <div class="kpi-card p-5 mb-4">
         <h3 class="font-bold text-blue-900 mb-4">Tambah Nota NBR</h3>
         <form method="POST" action="<?= BASE_URL ?>/index.php?page=nbr&action=save">
@@ -103,7 +105,7 @@ foreach ($nbrHarian as $h) {
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Nilai NBR (Rp)</label>
-                    <input type="text" name="nilai" value="0" class="input-field" oninput="formatNumber(this)">
+                    <input type="text" name="nilai" value="0" class="input-field num-input" oninput="formatNumber(this)">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Catatan</label>
@@ -138,7 +140,7 @@ foreach ($nbrHarian as $h) {
 </div>
 
 <!-- ── TAB: SUMMARY & POIN ── -->
-<div id="tab-nbr-summary" class="hidden">
+<div id="nbr-tab-summary" style="display:none">
     <!-- Visual kalkulasi -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <div class="<?= $nbrData['pct_dry']<=0.1?'bg-green-50 border-green-200':'bg-red-50 border-red-200' ?> border rounded-2xl p-4">
@@ -178,11 +180,11 @@ foreach ($nbrHarian as $h) {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Sales Nett Dry (Rp)</label>
-                    <input type="text" name="sales_nett_dry" value="<?= formatAngka($nbr['sales_nett_dry']??0) ?>" class="input-field" oninput="formatNumber(this);hitungNbr()">
+                    <input type="text" name="sales_nett_dry" value="<?= formatAngka($nbr['sales_nett_dry']??0) ?>" class="input-field num-input" oninput="formatNumber(this);hitungNbr()">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Total Nilai NBR Dry (Rp)</label>
-                    <input type="text" name="aktual_nbr_dry" id="nbr_dry_val" value="<?= formatAngka($nbr['aktual_nbr_dry']??0) ?>" class="input-field" oninput="formatNumber(this);hitungNbr()">
+                    <input type="text" name="aktual_nbr_dry" id="nbr_dry_val" value="<?= formatAngka($nbr['aktual_nbr_dry']??0) ?>" class="input-field num-input" oninput="formatNumber(this);hitungNbr()">
                     <p class="text-xs text-blue-600 mt-1">💡 Bisa diisi otomatis dari total nota harian: <strong><?= formatRupiah($totalNbrDryH,true) ?></strong>
                         <button type="button" onclick="setDryFromHarian()" class="underline text-blue-700 ml-1">Pakai nilai ini</button>
                     </p>
@@ -212,7 +214,7 @@ foreach ($nbrHarian as $h) {
 </div>
 
 <!-- ── TAB: DAFTAR NOTA ── -->
-<div id="tab-nbr-list" class="hidden">
+<div id="nbr-tab-list" style="display:none">
     <div class="kpi-card overflow-hidden">
         <div class="px-4 py-3 bg-blue-700 text-white font-bold text-sm flex justify-between items-center">
             <span>Daftar Nota NBR – <?= $bln ?> <?= $tahun ?></span>
@@ -285,4 +287,34 @@ function setDryFromHarian() {
     if(el){ el.value='<?= number_format($totalNbrDryH,0,",",".") ?>'; hitungNbr(); }
 }
 hitungNbr();
+</script>
+
+<script>
+(function(){
+    var filledDates = [];
+    var byDate = {};
+    var rows = <?php echo json_encode($nbrHarian); ?>;
+    rows.forEach(function(r){ 
+        if(!byDate[r.tanggal]){ byDate[r.tanggal]=true; filledDates.push(r.tanggal); }
+    });
+    document.addEventListener('DOMContentLoaded', function(){
+        nbrTab('harian');
+        KPI.renderCalendar('nbr-calendar', <?php echo $tahun ?>, <?php echo $bulan ?>, filledDates);
+        initNumberInputs();
+    });
+})();
+</script>
+<script>
+var NBR_TABS = ['harian','summary','list'];
+function nbrTab(name) {
+    NBR_TABS.forEach(function(t) {
+        var el  = document.getElementById('nbr-tab-'+t);
+        var btn = document.getElementById('nbr-btn-'+t);
+        if (el)  el.style.display = (t===name) ? 'block' : 'none';
+        if (btn) {
+            btn.classList.toggle('btn-primary',   t===name);
+            btn.classList.toggle('btn-secondary', t!==name);
+        }
+    });
+}
 </script>

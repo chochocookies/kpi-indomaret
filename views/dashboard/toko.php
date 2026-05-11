@@ -13,12 +13,7 @@ $kode   = $d['toko']['kode_toko'] ?? $_SESSION['kode_toko'];
 $namaToko = $d['toko']['nama_toko'] ?? '';
 ?>
 
-<?php if ($flash): ?>
-<div id="flash-msg" class="fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-semibold transition-opacity duration-500
-    <?= $flash['type']==='success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white' ?>">
-    <?= htmlspecialchars($flash['msg']) ?>
-</div>
-<?php endif; ?>
+<?php include __DIR__ . '/../layout/flash.php'; ?>
 
 <!-- Period Selector -->
 <?php include __DIR__ . '/../layout/period_selector.php'; ?>
@@ -323,6 +318,29 @@ $namaToko = $d['toko']['nama_toko'] ?? '';
     </div>
 </div>
 
+
+<!-- ════ MINI KALENDER SPD ════ -->
+<div class="kpi-card mt-4">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-blue-50">
+        <div class="font-bold text-blue-900 text-sm">📅 Status Pengisian Data Harian</div>
+        <a href="<?= BASE_URL ?>/index.php?page=spd&kode_toko=<?= $kode ?>&bulan=<?= $bulan ?>&tahun=<?= $tahun ?>"
+           class="text-xs text-blue-600 hover:text-blue-800 font-semibold">Input Data →</a>
+    </div>
+    <div class="p-4">
+        <div id="dash-calendar"></div>
+        <?php
+        $spdHarian   = $kpiModel->getAktualSpdBulanan($kode, $tahun, $bulan);
+        $spdFilled   = array_column($spdHarian, 'tanggal');
+        $totalTerisi = count($spdFilled);
+        $pctTerisi   = $d['hari_berjalan'] > 0 ? round($totalTerisi/$d['hari_berjalan']*100) : 0;
+        ?>
+        <div class="flex items-center justify-between mt-3 text-xs text-slate-500">
+            <span><?= $totalTerisi ?> dari <?= $d['hari_berjalan'] ?> hari terisi</span>
+            <span class="font-bold <?= $pctTerisi >= 80 ? 'text-green-600' : 'text-red-500' ?>"><?= $pctTerisi ?>% kelengkapan</span>
+        </div>
+    </div>
+</div>
+
 </div><!-- end grid -->
 
 <!-- Share Button -->
@@ -333,3 +351,13 @@ $namaToko = $d['toko']['nama_toko'] ?? '';
         Bagikan via WhatsApp
     </a>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var filled = <?php echo json_encode($spdFilled ?? []); ?>;
+    KPI.renderCalendar('dash-calendar', <?php echo $tahun ?>, <?php echo $bulan ?>, filled, function(d){
+        window.location.href = '<?= BASE_URL ?>/index.php?page=spd&kode_toko=<?= $kode ?>&bulan=<?= $bulan ?>&tahun=<?= $tahun ?>';
+    });
+    initNumberInputs();
+});
+</script>

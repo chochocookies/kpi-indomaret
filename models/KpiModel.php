@@ -452,9 +452,7 @@ class KpiModel {
             'grade'        => getGradeInsentif($poinTotal, $poinMaks),
         ];
     }
-}
 
-    // ============================================================
     // OTP VALIDATION
     // ============================================================
     public function getOtp(string $kode): ?string {

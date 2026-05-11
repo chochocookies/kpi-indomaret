@@ -45,10 +45,12 @@ class DashboardController extends BaseController {
             }
             $kpiData = $this->kpi->hitungKpiLengkap($kode, $tahun, $bulan);
             $this->view('dashboard/toko', [
-                'kpiData' => $kpiData,
-                'bulan'   => $bulan,
-                'tahun'   => $tahun,
-                'flash'   => $this->getFlash(),
+                'kpiData'  => $kpiData,
+                'kpiModel' => $this->kpi,
+                'kode'     => $kode,
+                'bulan'    => $bulan,
+                'tahun'    => $tahun,
+                'flash'    => $this->getFlash(),
             ]);
         }
     }

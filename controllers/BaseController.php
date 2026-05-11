@@ -1,5 +1,4 @@
 <?php
-// controllers/BaseController.php
 class BaseController {
     protected Database $db;
 
@@ -10,17 +9,10 @@ class BaseController {
     protected function view(string $view, array $data = []): void {
         extract($data);
         $viewFile = __DIR__ . '/../views/' . $view . '.php';
-        if (!file_exists($viewFile)) {
-            die("View not found: $view");
-        }
+        if (!file_exists($viewFile)) { die("View not found: $view"); }
         require_once __DIR__ . '/../views/layout/header.php';
         require_once $viewFile;
         require_once __DIR__ . '/../views/layout/footer.php';
-    }
-
-    protected function viewRaw(string $view, array $data = []): void {
-        extract($data);
-        require_once __DIR__ . '/../views/' . $view . '.php';
     }
 
     protected function json(array $data, int $code = 200): void {
@@ -31,6 +23,7 @@ class BaseController {
     }
 
     protected function redirect(string $url): void {
+        session_write_close(); // Ensure session is saved before redirect
         header("Location: $url");
         exit;
     }
@@ -76,18 +69,24 @@ class BaseController {
         unset($_SESSION['flash']);
         return $flash;
     }
-}
 
+    /**
+     * Cek OTP. Jika belum valid:
+     * - Simpan seluruh POST ke session
+     * - Redirect ke halaman OTP
+     * Setelah OTP benar, POST data dieksekusi otomatis tanpa ketik ulang.
+     */
     protected function requireOtp(string $kode): void {
-        // Admins skip OTP
         if ($this->isAdmin()) return;
-        // Check session OTP approval (valid 30 min per toko)
         $key = 'otp_ok_' . $kode;
         if (!empty($_SESSION[$key]) && (time() - $_SESSION[$key]) < 1800) return;
-        // Not validated yet - save intended destination and redirect to OTP page
-        $_SESSION['otp_redirect'] = $_SERVER['REQUEST_URI'];
-        $_SESSION['otp_kode'] = $kode;
-        $this->redirect(BASE_URL . '/index.php?page=otp&kode_toko=' . $kode);
+
+        // Simpan POST + URL tujuan ke session
+        $_SESSION['otp_pending_post']   = $_POST;
+        $_SESSION['otp_pending_action'] = $_SERVER['REQUEST_URI'];
+        $_SESSION['otp_kode']           = $kode;
+
+        $this->redirect(BASE_URL . '/index.php?page=otp&kode_toko=' . urlencode($kode));
     }
 
     protected function markOtpOk(string $kode): void {

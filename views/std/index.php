@@ -23,12 +23,7 @@ $pctItem2H   = $totalTrxItem2>0  ? round($aktItem2/$totalTrxItem2*100,2)   : 0;
 $pctNontunaiH= $totalTrxNontunai>0 ? round($aktNontunai/$totalTrxNontunai*100,2) : 0;
 ?>
 
-<?php if ($flash): ?>
-<div id="flash-msg" class="fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-semibold
-    <?= $flash['type']==='success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white' ?>">
-    <?= htmlspecialchars($flash['msg']) ?>
-</div>
-<?php endif; ?>
+<?php include __DIR__ . '/../layout/flash.php'; ?>
 
 <?php include __DIR__ . '/../layout/period_selector.php'; ?>
 
@@ -82,13 +77,20 @@ $pctNontunaiH= $totalTrxNontunai>0 ? round($aktNontunai/$totalTrxNontunai*100,2)
 
 <!-- Tabs -->
 <div class="flex gap-2 mb-4 flex-wrap">
-    <button onclick="showTab('tab-std-harian','std-')" id="std-btn-harian" class="btn-primary text-xs">📅 Input Harian</button>
-    <button onclick="showTab('tab-std-l3m','std-')" id="std-btn-l3m" class="btn-secondary text-xs">📊 Setting L3M & Aktual</button>
-    <button onclick="showTab('tab-std-rekap','std-')" id="std-btn-rekap" class="btn-secondary text-xs">📋 Rekap Harian (<?= count($stdHarian) ?>)</button>
+    <button onclick="stdTab('harian')" id="std-btn-harian" class="btn-primary text-xs">📅 Input Harian</button>
+    <button onclick="stdTab('l3m')" id="std-btn-l3m" class="btn-secondary text-xs">📊 Setting L3M & Aktual</button>
+    <button onclick="stdTab('rekap')" id="std-btn-rekap" class="btn-secondary text-xs">📋 Rekap Harian (<?= count($stdHarian) ?>)</button>
 </div>
 
 <!-- ── TAB: INPUT HARIAN ── -->
-<div id="tab-std-harian">
+<div id="std-tab-harian">
+    <!-- Kalender STD -->
+    <div class="kpi-card p-4 mb-4">
+        <div class="font-bold text-blue-900 text-sm mb-3">📅 Kalender – Hari dengan Data STD</div>
+        <div id="std-calendar"></div>
+        <p class="text-xs text-slate-400 mt-2">Klik tanggal merah untuk langsung scroll ke form input</p>
+    </div>
+
     <div class="kpi-card p-5 mb-4">
         <h3 class="font-bold text-blue-900 mb-4">Input Data STD Harian</h3>
         <form method="POST" action="<?= BASE_URL ?>/index.php?page=std&action=save">
@@ -169,7 +171,7 @@ $pctNontunaiH= $totalTrxNontunai>0 ? round($aktNontunai/$totalTrxNontunai*100,2)
 </div>
 
 <!-- ── TAB: L3M & AKTUAL ── -->
-<div id="tab-std-l3m" class="hidden">
+<div id="std-tab-l3m" style="display:none">
     <div class="kpi-card p-5">
         <h3 class="font-bold text-blue-900 mb-1">Setting L3M & Aktual Bulanan</h3>
         <p class="text-xs text-slate-500 mb-4">B-3 = <?= $bulanNama[$b3] ?>, B-2 = <?= $bulanNama[$b2] ?>, B-1 = <?= $bulanNama[$b1] ?></p>
@@ -225,7 +227,7 @@ $pctNontunaiH= $totalTrxNontunai>0 ? round($aktNontunai/$totalTrxNontunai*100,2)
 </div>
 
 <!-- ── TAB: REKAP HARIAN ── -->
-<div id="tab-std-rekap" class="hidden">
+<div id="std-tab-rekap" style="display:none">
     <div class="kpi-card overflow-hidden">
         <div class="px-4 py-3 bg-blue-700 text-white font-bold text-sm">Rekap Harian STD – <?= $bln ?> <?= $tahun ?></div>
         <?php if (empty($stdHarian)): ?>
@@ -277,5 +279,33 @@ $pctNontunaiH= $totalTrxNontunai>0 ? round($aktNontunai/$totalTrxNontunai*100,2)
 function setSuggest(key, val) {
     var el = document.getElementById('std-akt-'+key);
     if(el) el.value = val.toFixed(2);
+}
+</script>
+
+<script>
+(function(){
+    var filledDates = <?php echo json_encode(array_column($stdHarian, 'tanggal')); ?>;
+    document.addEventListener('DOMContentLoaded', function(){
+        stdTab('harian');
+        KPI.renderCalendar('std-calendar', <?php echo $tahun ?>, <?php echo $bulan ?>, filledDates, function(d){
+            document.querySelector('[name="tanggal"]').value = d;
+            document.querySelector('[name="tanggal"]').scrollIntoView({behavior:'smooth'});
+        });
+        initNumberInputs();
+    });
+})();
+</script>
+<script>
+var STD_TABS = ['harian','l3m','rekap'];
+function stdTab(name) {
+    STD_TABS.forEach(function(t) {
+        var el  = document.getElementById('std-tab-'+t);
+        var btn = document.getElementById('std-btn-'+t);
+        if (el)  el.style.display = (t===name) ? 'block' : 'none';
+        if (btn) {
+            btn.classList.toggle('btn-primary',   t===name);
+            btn.classList.toggle('btn-secondary', t!==name);
+        }
+    });
 }
 </script>
